@@ -1,0 +1,6 @@
+name: intuitiveRL
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+prefix: /home/amogh/anaconda3/envs/intuitiveRL
