@@ -48,19 +48,10 @@ def make_env(env_id: str, args, rank: int, seed: int = 0):
 	:param seed: the inital seed for RNG
 	:param rank: index of the subprocess
 	"""
-	cont_envs = ["LunarLander-v2"]
 	def _init():
 		env = Monitor(
 			env = gym.make(env_id, **args.env_kwargs)
 		)
-		# if env_id in cont_envs:
-		# 	env = Monitor(
-		# 				env = gym.make(env_id, continuous=args.continuous, render_mode=args.guiMode)
-		# 			)
-		# else:
-		# 	env = Monitor(
-		# 			env = gym.make(env_id, render_mode=args.guiMode)
-		# 		)
 		env.reset(seed=int(seed[rank]) + rank)
 		return env
 	set_random_seed(int(seed[rank]))
@@ -71,9 +62,11 @@ def cleanup(env, args):
 	env.close()
 	# remove logs if running test
 	if args.mode == "test":
-		files = glob.glob(os.path.join("./tensorboard_PPO/*"))
-		current_logfile = max(files, key=os.path.getctime)
-		os.remove(current_logfile)
+		logDir = os.path.join("./tensorboard_PPO/"+args.env+"_"+args.t)
+		logfile = os.listdir(logDir)
+		for file in logfile:
+			os.remove(os.path.join(logDir, file))
+		os.rmdir(logDir)
 
 def console_out(formattedStr, terminalChar=None, suppressCarriageReturn=False):
 	if terminalChar is not None:
