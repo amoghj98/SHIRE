@@ -114,6 +114,8 @@ class intuitivePPO(OnPolicyAlgorithm):
 		intuition_coef: Union[float, Schedule] = 0.5,
 		theta_margin: float = 0.4,
 		use_intuition: bool = False,
+		mean_reward_thresh = 100,
+		env_name = 'LunarLander-v2',
 		max_grad_norm: float = 0.5,
 		use_sde: bool = False,
 		sde_sample_freq: int = -1,
@@ -184,10 +186,15 @@ class intuitivePPO(OnPolicyAlgorithm):
 		self.target_kl = target_kl
 		#
 		self.intuition_coef = intuition_coef
-		self.theta_margin = theta_margin
 		self.use_intuition = use_intuition
 		self.rew_smoothing_factor = 0.6
 		self.mean_reward = 0
+		self.mean_reward_thresh = mean_reward_thresh
+		self.env_name = env_name
+		if 'CartPole' in self.env_name:
+			self.env_kwargs = {}
+		else:
+			self.env_kwargs = {}
 		#
 		if _init_setup_model:
 			self._setup_model()
@@ -231,7 +238,7 @@ class intuitivePPO(OnPolicyAlgorithm):
 			# self.mean_reward = self.rew_smoothing_factor * self.ep_info_buffer.
 			self.mean_reward = self.rew_smoothing_factor * self.mean_reward + (1 - self.rew_smoothing_factor) * self.rollout_buffer.rewards.sum(axis=0).mean()
 			low_intuition_loss = False
-			if (self.mean_reward > 100) or low_intuition_loss:
+			if (self.mean_reward > self.mean_reward_thresh) or low_intuition_loss:
 				if low_intuition_loss and self.use_intuition:
 					print(f'[{yellow}INFO{nc}] Intuition encouragement stopped due to high policy agreement')
 				elif self.use_intuition:
@@ -294,54 +301,14 @@ class intuitivePPO(OnPolicyAlgorithm):
 				entropy_losses.append(entropy_loss.item())
 				# print(entropy_loss.shape)
 
-				if self.use_intuition:
-					intuitive_action_loss, intuitive_vel_action_loss, intuitive_ori_action_loss = 0, 0, 0
-					# Intuition Encouragement
-					# init intuiton net
-					net = inets.LunarLander()
-					# get obs vals
-	 				# obs shape: [n, 8]
-					# print(rollout_data.observations.shape)
-					desired_theta = th.atan2(rollout_data.observations[:, 1], rollout_data.observations[:, 0])
-					# vel intuition - BEGIN
-					vxd = rollout_data.observations[:, 3] / th.tan(desired_theta)
-					theta_evi, acc_evi = [], []
-					for i in range(vxd.shape[0]):
-						ori = rollout_data.observations[i, 4]
-						# theta_evi.append('ltPB2' if th.abs(rollout_data.observations[i, 4] < th.pi/2) else 'gtPB2')
-						theta_evi.append('quad1' if ((ori > 0) and (ori <= th.pi/2)) else 'quad2' if ((ori > 0) and (ori > th.pi/2)) else 'quad3' if ((ori < 0) and (th.abs(ori) < th.pi/2)) else 'quad4')
-						acc_evi.append('pos_a' if ((vxd[i] > 0) and (rollout_data.observations[i, 2] < vxd[i])) else 'neg_a')
-					# lat_diff, main_diff = th.zeros(rollout_data.observations.shape[0]).to(device='cuda:0'), th.zeros(rollout_data.observations.shape[0]).to(device='cuda:0')# [], [], []
-					lat_diff, main_diff = th.zeros(rollout_data.observations.shape[0]), th.zeros(rollout_data.observations.shape[0])# [], [], []
-					for i in range(len(acc_evi)):
-						evi = {'theta': theta_evi[i], 'acc': acc_evi[i]}
-						lat_diff[i] = 1.0 if (((net.exact_inference('vel_net', 'l', evi) == 'fire') and (actions[i, 1] > -0.5))
-											or ((net.exact_inference('vel_net', 'r', evi) == 'fire') and (actions[i, 1] < 0.5))) else 0.0
-						main_diff[i] = 4.0 if ((net.exact_inference('vel_net', 'm', evi) == 'fire') and (actions[i, 0] < 0.5)) else 0.0
-					intuitive_vel_action_loss = lat_diff.sum() + main_diff.sum()
-					# vel intuition - END
-					# theta intuition - BEGIN
-					delta_theta = desired_theta - rollout_data.observations[:, 4]
-					theta_evi, x_evi, y_evi = [], [], []
-					for i in range(delta_theta.shape[0]):
-						theta_evi.append('safe' if th.abs(delta_theta[i]) < self.theta_margin else 'rDanger' if delta_theta[i] > self.theta_margin else 'lDanger')
-						x_evi.append('safe' if th.abs(rollout_data.observations[i, 0]) < 0.5 else 'rDanger' if rollout_data.observations[i, 0] > 0.5 else 'lDanger')
-						y_evi.append('safe' if rollout_data.observations[i, 1] > 1.0 else 'caution' if rollout_data.observations[i, 1] > 0.5 else 'danger')
-					# assign abstract states to observations
-					l_diff, r_diff = th.zeros(rollout_data.observations.shape[0]), th.zeros(rollout_data.observations.shape[0])
-					for i in range(len(x_evi)):
-						evi = {'theta': theta_evi[i], 'py': y_evi[i], 'px': x_evi[i]}
-						l_diff[i] = 1.0 if (net.exact_inference('l_ori_net', 'l', evi) and actions[i, 1] > -0.5) == 'fire' else 0.0
-						r_diff[i] = 1.0 if (net.exact_inference('r_ori_net', 'r', evi) and actions[i, 1] < 0.5) == 'fire' else 0.0
-					intuitive_ori_action_loss = l_diff.sum() + r_diff.sum()
-					# theta intuition - END
-					low_intuition_loss = True if intuitive_action_loss <= 0.6 * self.env.num_envs else False
-					intuitive_action_loss = intuitive_vel_action_loss + intuitive_ori_action_loss
-					intuition_losses.append(intuitive_action_loss.item())
-
 				# std loss computation
 				loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
+
 				if self.use_intuition:
+					net = inets.__envs__[self.env_name](**self.env_kwargs)
+					# intuitive_action_loss = net.compute_intuition_loss(rollout_data=rollout_data, actions=actions)
+					intuitive_action_loss = net.forward(rollout_data=rollout_data)
+					intuition_losses.append(intuitive_action_loss.item())
 					loss += intuition_coef * intuitive_action_loss
 
 				# Calculate approximate form of reverse KL Divergence for early stopping

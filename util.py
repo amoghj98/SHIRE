@@ -68,8 +68,13 @@ def cleanup(env, args):
 			os.remove(os.path.join(logDir, file))
 		os.rmdir(logDir)
 
-def console_out(formattedStr, terminalChar=None, suppressCarriageReturn=False):
-	if terminalChar is not None:
-		print(formattedStr, end=terminalChar, flush=suppressCarriageReturn)
+def console_out(consoleMsg=None, msgCategory="INFO", formattedStr=None, terminalChar=None, suppressCarriageReturn=False):
+	if consoleMsg is not None:
+		colourCode = {'FATAL': red, 'WARNING': yellow}
+		colour = colourCode[msgCategory] if msgCategory in colourCode.keys() else green
+		print(f'[{colour}{msgCategory}{nc}] {consoleMsg}')
 	else:
-		print(formattedStr, flush=suppressCarriageReturn)
+		if terminalChar is not None:
+			print(formattedStr, end=terminalChar, flush=suppressCarriageReturn)
+		else:
+			print(formattedStr, flush=suppressCarriageReturn)

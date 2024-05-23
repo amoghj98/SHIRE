@@ -3,3 +3,4 @@ tensorboard*/
 runs/
 best_model/
 *pycache*
+scratchpad.py
