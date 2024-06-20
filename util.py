@@ -6,18 +6,51 @@ import torch
 import time
 import os
 import glob
+from enum import Enum
+import readline
 
 import gymnasium as gym
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.callbacks import BaseCallback
 
 
-# define console out colours
-white='\033[1;37m'
-red='\033[1;31m'
-green='\033[1;32m'
-yellow='\033[1;33m'
+# define colour escape codes
+red='\033[1;91m'
+green='\033[1;92m'
+yellow='\033[1;93m'
+blue='\033[1;94m'
+magenta='\033[1;95m'
+cyan='\033[1;96m'
+white='\033[1;97m'
 nc='\033[0m'
+
+
+# cosmetic enums
+class msgCategory(Enum):
+	FATAL = 0
+	WARNING = 1
+	INFO = 2
+	CUSTOM = 3
+
+class msgColour(str, Enum):
+	RED = red
+	GREEN = green
+	YELLOW = yellow
+	BLUE = blue
+	MAGENTA = magenta
+	CYAN = cyan
+	WHITE = white
+	NO_COLOUR = nc
+
+start_ignore = '\001'
+end_ignore = '\002'
+
+def quiet_exit_exception(exc_type, exc_val, traceback):
+	pass
+
+
+colourCode = {msgCategory.FATAL: msgColour.RED, msgCategory.WARNING: msgColour.YELLOW, msgCategory.INFO: msgColour.GREEN, msgCategory.CUSTOM: msgColour.CYAN}
 
 
 # util functions
@@ -57,24 +90,62 @@ def make_env(env_id: str, args, rank: int, seed: int = 0):
 	set_random_seed(int(seed[rank]))
 	return _init
 
-def cleanup(env, args):
+def cleanup(env, args, killed=False, deleteLogs=False):
+	console_out(consoleMsg='Cleaning up...', terminalChar='\t', suppressCarriageReturn=True, suppressMsgCategory=True)
 	# close env
-	env.close()
+	if not killed:
+		env.close()
+	# delete run (useless extra log)
+	runDir = os.path.join("./runs", (time.strftime("%b%d_%T", args._raw_time)+'_'+os.uname().nodename).replace(':', '-'))
+	runfiles = os.listdir(runDir)
+	for file in runfiles:
+		os.remove(os.path.join(runDir, file))
+	os.rmdir(runDir)
 	# remove logs if running test
-	if args.mode == "test":
-		logDir = os.path.join("./tensorboard_PPO/"+args.env+"_"+args.t)
-		logfile = os.listdir(logDir)
-		for file in logfile:
+	if deleteLogs or args.mode == "test":
+		# delete log
+		logDir = os.path.join("./tensorboard_PPO", args.env+"_"+args.t)
+		logfiles = os.listdir(logDir)
+		for file in logfiles:
 			os.remove(os.path.join(logDir, file))
 		os.rmdir(logDir)
+	console_out(consoleMsg=f'[{green}DONE{nc}]', suppressMsgCategory=True)
 
-def console_out(consoleMsg=None, msgCategory="INFO", formattedStr=None, terminalChar=None, suppressCarriageReturn=False):
-	if consoleMsg is not None:
-		colourCode = {'FATAL': red, 'WARNING': yellow}
-		colour = colourCode[msgCategory] if msgCategory in colourCode.keys() else green
-		print(f'[{colour}{msgCategory}{nc}] {consoleMsg}')
-	else:
-		if terminalChar is not None:
-			print(formattedStr, end=terminalChar, flush=suppressCarriageReturn)
-		else:
-			print(formattedStr, flush=suppressCarriageReturn)
+def console_out(consoleMsg='sample msg', msgCat=msgCategory.INFO, categoryStr=None, categoryCol=msgColour.WHITE, msgCol=msgColour.NO_COLOUR, terminalChar='\n', suppressMsgCategory=False, flushPrintBuffer=False):
+	catStr = categoryStr.upper() if (msgCat==msgCategory.CUSTOM and categoryStr is not None) else msgCat.name
+	catCol = colourCode[msgCat] if (msgCat in colourCode.keys() and msgCat!=msgCategory.CUSTOM) else categoryCol
+	category = f'' if suppressMsgCategory else f'[{catCol}{catStr}{nc}] '
+	msg = f'{msgCol}{consoleMsg}{nc}'
+	print(f'{category}{msg}', end=terminalChar, flush=flushPrintBuffer)
+
+
+# custom callback class to save models that solve the environment
+class saveSolvedState(BaseCallback):
+	def __init__(self, env, eval_freq, t, solved_state_reward = None, verbose: int = 0):
+		super().__init__(verbose)
+		self.envName = env
+		self.eval_freq = eval_freq
+		self.model_save_path="./best_model/"+t
+		self.solved_state_reward = solved_state_reward
+
+	def _on_step(self) -> bool:
+		assert self.parent is not None, ("`StopTrainingOnRewardThreshold` callback must be used with an `EvalCallback`")
+		#
+		if (self.solved_state_reward is not None) and (self.parent.last_mean_reward > self.solved_state_reward):
+			console_out(consoleMsg=f'New solution model with mean reward {self.parent.last_mean_reward}', msgCat=msgCategory.CUSTOM, categoryStr='update', categoryCol=msgColour.BLUE, msgCol=msgColour.CYAN)
+			self.model.save(os.path.join(self.model_save_path, self.envName+'_step_'+str(self.parent.num_timesteps)))
+		#
+		continue_training = True
+		return continue_training
+	
+# custom callback class to stop training
+class stopTraining(BaseCallback):
+	def __init__(self, verbose: int = 0):
+		super().__init__(verbose)
+		self.continueTraining = True
+
+	def _on_step(self) -> bool:
+		return self.continueTraining
+	
+	def external_stop(self):
+		self.continueTraining = False

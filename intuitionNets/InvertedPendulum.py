@@ -12,7 +12,7 @@ import numpy as np
 import time
 
 
-class CartPole(th.autograd.Function):
+class InvertedPendulum(th.autograd.Function):
 	def __init__(self, debug=False):
 		self.debug = debug
 		self.force_net = BayesianNetwork()
@@ -53,7 +53,7 @@ class CartPole(th.autograd.Function):
 	
 	def encode_abstract_states(self, rollout_data):
 		theta_evi = []
-		ori = rollout_data.observations[:, 2]
+		ori = rollout_data.observations[:, 1]
 		for i in range(rollout_data.observations.shape[0]):
 			theta_evi.append('r' if ori[i] < 0 else 'l')
 		return [theta_evi]
@@ -64,8 +64,8 @@ class CartPole(th.autograd.Function):
 		f_diff = th.zeros(rollout_data.observations.shape[0])
 		for i in range(rollout_data.observations.shape[0]):
 			evi = {'theta': theta_evi[i]}
-			f_diff[i] = 1.0 if ((self.exact_inference('force_net', 'f', evi) == 'goLeft') and (actions[i] == 0)
-								or (self.exact_inference('force_net', 'f', evi) == 'goRight') and (actions[i] == 1)) else 0.0
+			f_diff[i] = 1.0 if ((self.exact_inference('force_net', 'f', evi) == 'goLeft') and (actions[i] >= 0)
+								or (self.exact_inference('force_net', 'f', evi) == 'goRight') and (actions[i] <= 0)) else 0.0
 		return [f_diff]
 	
 	def forward(self, rollout_data):
@@ -83,7 +83,7 @@ class CartPole(th.autograd.Function):
 
 
 if __name__ == "__main__":
-	net = CartPole(debug=True)
+	net = InvertedPendulum(debug=True)
 	net.check_pgm(net.force_net)
 	# l_red = net.l_ori_net.get_cpds()[3].reduce([('theta')])
 	# net.marginalise(net.l_ori_net, ['theta', 'py', 'px'], 'l')

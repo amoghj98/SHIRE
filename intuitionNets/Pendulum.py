@@ -4,9 +4,12 @@ import sys
 import pgmpy
 from pgmpy.models import BayesianNetwork
 from pgmpy.factors.discrete.CPD import TabularCPD
-from pgmpy.inference import BeliefPropagation
+from pgmpy.inference import BeliefPropagation, VariableElimination
 
 import torch as th
+import numpy as np
+
+import time
 
 
 class Pendulum(th.autograd.Function):
@@ -23,7 +26,11 @@ class Pendulum(th.autograd.Function):
 										'omega': ['neg_w', 'pos_w']})
 		self.torque_net.add_cpds(omega_cpd, t_cpd)
 		#
-		self.bp = {'torque_net': BeliefPropagation(self.torque_net)}
+		# self.bp = {'torque_net': BeliefPropagation(self.torque_net)}
+		self.ve = {'torque_net': VariableElimination(self.torque_net)}
+
+	def __reduce__(self) -> str | tuple[any, ...]:
+		return (self.__class__, (self.debug, ))
 
 	def check_pgm(self, net):
 		assert net.check_model() == True, f'ERROR: Inconsistent probability assignments detected in network "{net}"!'
@@ -38,7 +45,8 @@ class Pendulum(th.autograd.Function):
 
 	def exact_inference(self, net, var, evidence):
 		# self.bp[net].calibrate()
-		var_max = self.bp[net].map_query(variables=[var], evidence=evidence)[var]
+		# var_max = self.bp[net].map_query(variables=[var], evidence=evidence)[var]
+		var_max = 'pos_t' if np.argmax(self.ve[net].query(variables=[var], evidence=evidence, elimination_order='greedy', joint=True, show_progress=False).values) else 'neg_t'
 		if self.debug:
 			print(var_max)
 		return var_max
@@ -64,14 +72,14 @@ class Pendulum(th.autograd.Function):
 		[t_diff] = self.compute_intuition_diffs(rollout_data)
 		# convert to hinge loss
 		actions = rollout_data.actions
-		t_diff_max = th.maximum((1 - (t_diff * th.abs(actions[:, 1].cpu()))), th.zeros(rollout_data.observations.shape[0]))
+		t_diff_max = th.maximum((1 - (t_diff * th.abs(actions.cpu()))), th.zeros(rollout_data.observations.shape[0]))
 		intuition_loss = t_diff_max.sum()
 		self.save_for_backward(t_diff)
 		return intuition_loss
 
 	def backward(self, grad_output):
 		t_diff = self.saved_tensors
-		return -grad_output * (t_diff.sum())
+		return -grad_output * (t_diff)
 
 
 if __name__ == "__main__":

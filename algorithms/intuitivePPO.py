@@ -8,8 +8,10 @@ import torch as th
 from gymnasium import spaces
 from torch.nn import functional as F
 
-from stable_baselines3.common.buffers import RolloutBuffer
-from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
+# from stable_baselines3.common.buffers import RolloutBuffer
+from .buffers import RolloutBuffer
+# from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
+from .on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.policies import ActorCriticCnnPolicy, ActorCriticPolicy, BasePolicy, MultiInputActorCriticPolicy
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
 from stable_baselines3.common.utils import explained_variance, get_schedule_fn
@@ -23,17 +25,14 @@ from pgmpy.inference import BeliefPropagation
 
 from os.path import expanduser
 import sys
-sys.path.insert(1, expanduser("~")+'/intuitiveRL/intuitionNets')
 
+sys.path.insert(1, expanduser("~")+'/intuitiveRL/intuitionNets')
 import intuitionNets as inets
 
+sys.path.insert(1, expanduser("~")+'/intuitiveRL')
+from util import *
 
-# define console out colours
-white='\033[1;37m'
-red='\033[1;31m'
-green='\033[1;32m'
-yellow='\033[1;33m'
-nc='\033[0m'
+warnings.simplefilter("error", RuntimeWarning)
 
 class intuitivePPO(OnPolicyAlgorithm):
 	"""
@@ -110,12 +109,14 @@ class intuitivePPO(OnPolicyAlgorithm):
 		clip_range_vf: Union[None, float, Schedule] = None,
 		normalize_advantage: bool = True,
 		ent_coef: float = 0.0,
+		ent_coef_sched: Union[float, Schedule] = 0.0,
 		vf_coef: float = 0.5,
-		intuition_coef: Union[float, Schedule] = 0.5,
 		theta_margin: float = 0.4,
 		use_intuition: bool = False,
+		intuition_coef: Union[float, Schedule] = 0.5,
 		mean_reward_thresh = 100,
 		env_name = 'LunarLander-v2',
+		pgm_kwargs: Optional[Dict[str, Any]] = None,
 		max_grad_norm: float = 0.5,
 		use_sde: bool = False,
 		sde_sample_freq: int = -1,
@@ -184,17 +185,19 @@ class intuitivePPO(OnPolicyAlgorithm):
 		self.clip_range_vf = clip_range_vf
 		self.normalize_advantage = normalize_advantage
 		self.target_kl = target_kl
+		self.ent_coef_sched = ent_coef_sched
 		#
-		self.intuition_coef = intuition_coef
 		self.use_intuition = use_intuition
-		self.rew_smoothing_factor = 0.6
-		self.mean_reward = 0
-		self.mean_reward_thresh = mean_reward_thresh
-		self.env_name = env_name
-		if 'CartPole' in self.env_name:
-			self.env_kwargs = {}
-		else:
-			self.env_kwargs = {}
+		if self.use_intuition:
+			self.intuition_coef = intuition_coef
+			self.low_intuition_loss = False
+			self.env_name = env_name
+			self.rew_smoothing_factor = 0.5
+			self.mean_reward = None
+			self.mean_reward_thresh = mean_reward_thresh
+			# if 'CartPole' in self.env_name:
+			self.pgm_kwargs = pgm_kwargs
+			self.net = inets.__envs__[self.env_name](**self.pgm_kwargs)
 		#
 		if _init_setup_model:
 			self._setup_model()
@@ -203,7 +206,8 @@ class intuitivePPO(OnPolicyAlgorithm):
 		super()._setup_model()
 		# Initialize schedules for policy/value clipping
 		self.clip_range = get_schedule_fn(self.clip_range)
-		self.intuition_coef = get_schedule_fn(self.intuition_coef)
+		if self.use_intuition:
+			self.intuition_coef = get_schedule_fn(self.intuition_coef)
 		if self.clip_range_vf is not None:
 			if isinstance(self.clip_range_vf, (float, int)):
 				assert self.clip_range_vf > 0, "`clip_range_vf` must be positive, " "pass `None` to deactivate vf clipping"
@@ -223,27 +227,45 @@ class intuitivePPO(OnPolicyAlgorithm):
 		if self.clip_range_vf is not None:
 			clip_range_vf = self.clip_range_vf(self._current_progress_remaining)  # type: ignore[operator]
 
-		intuition_coef = self.intuition_coef(self._current_progress_remaining)
+		if self.use_intuition:
+			intuition_coef = self.intuition_coef(self._current_progress_remaining)
+			# self.net = inets.__envs__[self.env_name](**self.pgm_kwargs)
+			# self.net.generate_memory_states(self.rollout_buffer)
 
 		entropy_losses = []
 		pg_losses, value_losses = [], []
 		intuition_losses = []
 		clip_fractions = []
 
+		self.ent_coef = self.ent_coef_sched(self._current_progress_remaining)
+
+		# disable intuition after basics are learned
+		if self.use_intuition:
+			epi_rew_mean_across_envs = np.zeros((self.n_envs, 1))
+			for env_idx in range(self.n_envs):
+				start_idxs = np.where(self.rollout_buffer.episode_starts[:, env_idx] > 0)[0]
+				end_idxs = np.append(np.copy(start_idxs)[1:], self.rollout_buffer.buffer_size)
+				env_rews = np.array([self.rollout_buffer.rewards[start_idxs[i] : end_idxs[i], env_idx].sum() for i in range(len(start_idxs))])
+				try:
+					epi_rew_mean_across_envs[env_idx] = env_rews.mean()
+				except:
+					epi_rew_mean_across_envs[env_idx] = self.mean_reward
+			epi_rew_mean = epi_rew_mean_across_envs.mean()
+			if self.mean_reward is not None:
+				self.mean_reward = self.rew_smoothing_factor * self.mean_reward + (1 - self.rew_smoothing_factor) * epi_rew_mean
+			else:
+				self.mean_reward = epi_rew_mean if epi_rew_mean is not np.NaN else self.mean_reward
+			if (self.mean_reward > self.mean_reward_thresh) or self.low_intuition_loss:
+				if self.low_intuition_loss and self.use_intuition:
+					console_out(consoleMsg=f'Intuition encouragement stopped due to high policy agreement', msgCategory=msgCategory.CUSTOM, categoryStr='alert')
+				elif self.use_intuition:
+					console_out(consoleMsg=f'Intuition encouragement stopped due to high mean reward', msgCategory=msgCategory.CUSTOM, categoryStr='alert')
+				self.use_intuition = False
+
 		continue_training = True
 		# train for n_epochs epochs
 		for epoch in range(self.n_epochs):
 			approx_kl_divs = []
-			# disable intuition after basics are learned
-			# self.mean_reward = self.rew_smoothing_factor * self.ep_info_buffer.
-			self.mean_reward = self.rew_smoothing_factor * self.mean_reward + (1 - self.rew_smoothing_factor) * self.rollout_buffer.rewards.sum(axis=0).mean()
-			low_intuition_loss = False
-			if (self.mean_reward > self.mean_reward_thresh) or low_intuition_loss:
-				if low_intuition_loss and self.use_intuition:
-					print(f'[{yellow}INFO{nc}] Intuition encouragement stopped due to high policy agreement')
-				elif self.use_intuition:
-					print(f'[{yellow}INFO{nc}] Intuition encouragement stopped due to high mean reward')
-				self.use_intuition = False
 			# Do a complete pass on the rollout buffer
 			for rollout_data in self.rollout_buffer.get(self.batch_size):
 				actions = rollout_data.actions
@@ -301,15 +323,15 @@ class intuitivePPO(OnPolicyAlgorithm):
 				entropy_losses.append(entropy_loss.item())
 				# print(entropy_loss.shape)
 
-				# std loss computation
-				loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
-
+				# Intuition Loss Computation
 				if self.use_intuition:
-					net = inets.__envs__[self.env_name](**self.env_kwargs)
-					# intuitive_action_loss = net.compute_intuition_loss(rollout_data=rollout_data, actions=actions)
-					intuitive_action_loss = net.forward(rollout_data=rollout_data)
+					intuitive_action_loss = self.net.forward(rollout_data=rollout_data)
+					# sys.exit(0)
 					intuition_losses.append(intuitive_action_loss.item())
-					loss += intuition_coef * intuitive_action_loss
+					loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + intuition_coef * intuitive_action_loss
+				else:
+					# std loss computation
+					loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
 
 				# Calculate approximate form of reverse KL Divergence for early stopping
 				# see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417
@@ -341,14 +363,17 @@ class intuitivePPO(OnPolicyAlgorithm):
 
 		# Logs
 		self.logger.record("train/entropy_loss", np.mean(entropy_losses))
+		self.logger.record("train/entropy_loss_coef", self.ent_coef)
 		self.logger.record("train/policy_gradient_loss", np.mean(pg_losses))
 		self.logger.record("train/value_loss", np.mean(value_losses))
-		self.logger.record("train/intuition_loss", np.mean(intuition_losses))
+		if self.use_intuition:
+			self.logger.record("train/intuition_loss", np.mean(intuition_losses))
 		self.logger.record("train/approx_kl", np.mean(approx_kl_divs))
 		self.logger.record("train/clip_fraction", np.mean(clip_fractions))
 		self.logger.record("train/loss", loss.item())
 		self.logger.record("train/explained_variance", explained_var)
-		self.logger.record("train/smoothed_mean_reward", self.mean_reward)
+		if self.use_intuition:
+			self.logger.record("train/smoothed_mean_reward", self.mean_reward)
 		if hasattr(self.policy, "log_std"):
 			self.logger.record("train/std", th.exp(self.policy.log_std).mean().item())
 
