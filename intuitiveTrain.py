@@ -46,7 +46,12 @@ if __name__ == "__main__":
 	torch.pi = np.pi
 	# Create the vectorized environment
 	if args.mode == "train":
-		vec_env = SubprocVecEnv([make_env(args.env, args, i, torch.randint(0, 2**20, (args.nCores,))) for i in range(args.nCores)])
+		if not os.path.exists(os.path.join("./best_model", args.t)):
+			os.mkdir(os.path.join("./best_model", args.t))
+		if args.set_seeds:
+			vec_env = SubprocVecEnv([make_env(args.env, args, i, args.seeds) for i in range(args.nCores)])
+		else:
+			vec_env = SubprocVecEnv([make_env(args.env, args, i, torch.randint(0, 2**20, (args.nCores,))) for i in range(args.nCores)])
 	elif args.mode == "test":
 		vec_env = SubprocVecEnv([make_env(args.env, args, i, torch.randint(0, 2**20, (1,))) for i in range(1)])
 	# construct rl algo kwargs dict
@@ -72,8 +77,8 @@ if __name__ == "__main__":
 	#
 	eval_callback = EvalCallback(
 		vec_env,
-		callback_after_eval=solvedStateSaver,
-		callback_on_new_best=None,
+		callback_after_eval=None, #solvedStateSaver,
+		callback_on_new_best=solvedStateSaver,
 		n_eval_episodes=args.nEpisodes,
 		best_model_save_path="./best_model/"+args.t,
 		log_path=args.logPath,

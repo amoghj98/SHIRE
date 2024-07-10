@@ -85,30 +85,50 @@ def make_env(env_id: str, args, rank: int, seed: int = 0):
 		env = Monitor(
 			env = gym.make(env_id, **args.env_kwargs)
 		)
-		env.reset(seed=int(seed[rank]) + rank)
+		if args.set_seeds:
+			env.reset(seed=int(args.seeds[rank]) + rank)
+		else:
+			env.reset(seed=int(seed[rank]) + rank)
+		if args.mode == 'train':
+			_log_seeds(args, seed, rank)
 		return env
-	set_random_seed(int(seed[rank]))
+	if args.set_seeds:
+		set_random_seed(int(args.seeds[rank]))
+	else:
+		set_random_seed(int(seed[rank]))
 	return _init
 
+def _log_seeds(args, seed, rank):
+	with open(os.path.join("./best_model", args.t, 'seeds.txt'), 'a') as seed_log_file:
+		seed_log_file.write(f'Thread {rank} Seeds: {seed}\n')
+		seed_log_file.write(f'Thread {rank} Reset seed: {int(seed[rank]) + rank}\n')
+		seed_log_file.write(f'Thread {rank} Random seed: {int(seed[rank])}\n')
+	console_out(f'Thread {rank} Seeds: {seed}')
+	console_out(f'Thread {rank} Reset seed: {int(seed[rank]) + rank}')
+	console_out(f'Thread {rank} Random seed: {int(seed[rank])}')
+
+def _clear_dir(dir):
+	files = os.listdir(dir)
+	for file in files:
+		os.remove(os.path.join(dir, file))
+	os.rmdir(dir)
+
 def cleanup(env, args, killed=False, deleteLogs=False):
-	console_out(consoleMsg='Cleaning up...', terminalChar='\t', suppressCarriageReturn=True, suppressMsgCategory=True)
+	console_out(consoleMsg='Cleaning up...', terminalChar='\t', suppressMsgCategory=True)
 	# close env
 	if not killed:
 		env.close()
+	else:
+		modelDir = os.path.join("./best_model", args.t)
+		_clear_dir(modelDir)
 	# delete run (useless extra log)
 	runDir = os.path.join("./runs", (time.strftime("%b%d_%T", args._raw_time)+'_'+os.uname().nodename).replace(':', '-'))
-	runfiles = os.listdir(runDir)
-	for file in runfiles:
-		os.remove(os.path.join(runDir, file))
-	os.rmdir(runDir)
+	_clear_dir(runDir)
 	# remove logs if running test
 	if deleteLogs or args.mode == "test":
 		# delete log
 		logDir = os.path.join("./tensorboard_PPO", args.env+"_"+args.t)
-		logfiles = os.listdir(logDir)
-		for file in logfiles:
-			os.remove(os.path.join(logDir, file))
-		os.rmdir(logDir)
+		_clear_dir(logDir)
 	console_out(consoleMsg=f'[{green}DONE{nc}]', suppressMsgCategory=True)
 
 def console_out(consoleMsg='sample msg', msgCat=msgCategory.INFO, categoryStr=None, categoryCol=msgColour.WHITE, msgCol=msgColour.NO_COLOUR, terminalChar='\n', suppressMsgCategory=False, flushPrintBuffer=False):

@@ -20,25 +20,32 @@ nc='\033[0m'
 class Swimmer(th.autograd.Function):
 	def __init__(self, debug=False):
 		self.debug = debug
-		self.torque_net = BayesianNetwork()
-		self.torque_net.add_nodes_from(['theta', 'flag', 't'])
-		self.torque_net.add_edges_from([('theta', 't'), ('flag', 't')])
+		self.t1_net = BayesianNetwork()
+		self.t2_net = BayesianNetwork()
+		self.t1_net.add_nodes_from(['theta1', 't1'])
+		self.t2_net.add_nodes_from(['theta2', 't2'])
+		self.t1_net.add_edges_from([('theta1', 't1')])
+		self.t2_net.add_edges_from([('theta2', 't2')])
 		#
-		theta_cpd = TabularCPD('theta', 2, [[0.5], [0.5]],	# uniform for now
-							state_names={'theta': ['neg_ang', 'pos_ang']})
-		flag_cpd = TabularCPD('flag', 2, [[0.5], [0.5]],	# uniform for now
-							state_names={'flag': ['torque', 'no_torque']})
-		t_cpd = TabularCPD('t', 3 , [[0.15, 0.05, 0.8, 0.05],
-									[0.05, 0.9, 0.05, 0.9],
-									[0.8, 0.05, 0.15, 0.05]],#[[0.8, 0.2], [0.2, 0.8]],
-							evidence=['theta', 'flag'], evidence_card=[2, 2],
-							state_names={'t': ['neg_t', 'no_t', 'pos_t'],
-										'theta': ['neg_ang', 'pos_ang'],
-										'flag': ['torque', 'no_torque']})
-		self.torque_net.add_cpds(theta_cpd, flag_cpd, t_cpd)
+		theta1_cpd = TabularCPD('theta1', 3, [[0.33], [0.34], [0.33]],	# uniform for now
+							state_names={'theta1': ['neg_ang', 'lt_thresh', 'pos_ang']})
+		theta2_cpd = TabularCPD('theta2', 3, [[0.33], [0.34], [0.33]],	# uniform for now
+							state_names={'theta2': ['neg_ang', 'lt_thresh', 'pos_ang']})
+		t1_cpd = TabularCPD('t1', 2 , [[0.8, 0.5, 0.2],
+								 	   [0.2, 0.5, 0.8]],
+							evidence=['theta1'], evidence_card=[3],
+							state_names={'t1': ['neg_t', 'pos_t'],
+										'theta1': ['neg_ang', 'lt_thresh', 'pos_ang']})
+		t2_cpd = TabularCPD('t2', 2 , [[0.8, 0.5, 0.2],
+								 	   [0.2, 0.5, 0.8]],
+							evidence=['theta2'], evidence_card=[3],
+							state_names={'t2': ['neg_t', 'pos_t'],
+										'theta2': ['neg_ang', 'lt_thresh', 'pos_ang']})
+		self.t1_net.add_cpds(theta1_cpd, t1_cpd)
+		self.t2_net.add_cpds(theta2_cpd, t2_cpd)
 		#
-		self.bp = {'torque_net': BeliefPropagation(self.torque_net)}
-		self.bp = {'torque_net': VariableElimination(self.torque_net)}
+		self.bp = {'t1_net': BeliefPropagation(self.t1_net), 't2_net': BeliefPropagation(self.t2_net)}
+		self.ve = {'t1_net': VariableElimination(self.t1_net), 't2_net': VariableElimination(self.t2_net)}
 		
 	def __reduce__(self) -> str | tuple[any, ...]:
 		return (self.__class__, (self.debug, ))
@@ -46,7 +53,7 @@ class Swimmer(th.autograd.Function):
 	def check_pgm(self, net):
 		assert net.check_model() == True, f'ERROR: Inconsistent probability assignments detected in network "{net}"!'
 		if self.debug:
-			print(self.torque_net.get_cpds()[1])
+			print(net.get_cpds()[1])
 
 	def marginalise(self, net, vars_to_marginalise, var_to_compute):
 		idx = list(net.nodes()).index(var_to_compute)
@@ -56,7 +63,8 @@ class Swimmer(th.autograd.Function):
 
 	def exact_inference(self, net, var, evidence):
 		# self.bp[net].calibrate()
-		var_max = self.bp[net].map_query(variables=[var], evidence=evidence)[var]
+		# var_max = self.ve[net].map_query(variables=[var], evidence=evidence)[var]
+		var_max = 'pos_t' if np.argmax(self.ve[net].query(variables=[var], evidence=evidence, joint=False, show_progress=False)[var].values) else 'neg_t'
 		if self.debug:
 			print(var_max)
 		return var_max
@@ -78,22 +86,30 @@ class Swimmer(th.autograd.Function):
 		# return action_triggers
 	
 	def encode_abstract_states(self, rollout_data):
-		theta_evi = []
-		flag_evi = []
-		theta1 = th.arctan2(rollout_data.observations[:, 1], rollout_data.observations[:, 0])
-		w = rollout_data.observations[:, 4]
+		theta_thresh = 4e-1
+		theta1_evi, theta2_evi = [], []
+		theta1 = rollout_data.observations[:, 1] - rollout_data.observations[:, 0]
+		theta2 = rollout_data.observations[:, 2] - rollout_data.observations[:, 0]
 		for i in range(rollout_data.observations.shape[0]):
-			theta_evi.append('pos_ang' if theta1[i] > 0 else 'neg_ang')
-			flag_evi.append('torque' if rollout_data.action_triggers[i] else 'no_torque')
-		return [theta_evi, flag_evi]
+			theta1_evi.append('lt_thresh' if th.abs(theta1[i]) <= theta_thresh else ('neg_ang' if theta1[i] < theta_thresh else 'pos_ang'))
+			theta2_evi.append('lt_thresh' if th.abs(theta2[i]) <= theta_thresh else ('neg_ang' if theta2[i] < theta_thresh else 'pos_ang'))
+		return [theta1_evi, theta2_evi]
 	
 	def compute_intuition_diffs(self, rollout_data):
-		epsilon = 2e-1
+		epsilon = 3e-1
 		actions = rollout_data.actions
-		# [theta_evi, flag_evi] = self.encode_abstract_states(rollout_data=rollout_data)
+		# l = [0, 1, 2, 5, 6, 7]
+		# for i in l:
+		# 	print(f'obs[{i}]: {rollout_data.observations[:, i]}')
+		[theta1_evi, theta2_evi] = self.encode_abstract_states(rollout_data=rollout_data)
 		t_diff = th.zeros(rollout_data.observations.shape[0])
 		for i in range(rollout_data.observations.shape[0]):
-			t_diff[i] = 1.0 if ((th.prod(actions[i]) > 0) or th.any(th.abs(actions[i]) < epsilon*th.ones(size=actions[i].shape).to(device='cuda'))) else 0.0
+			evi1 = {'theta1': theta1_evi[i]}
+			evi2 = {'theta2': theta2_evi[i]}
+			# t_diff[i] = 1.0 if ((vx[i] <= 0) or th.any(th.abs(actions[i]) < epsilon*th.ones(size=actions[i].shape).to(device='cuda'))) else 0.0
+			t_diff[i] = 1.0 if (((actions[i, 0] < 0 and self.exact_inference('t1_net', 't1', evi1) == 'pos_t') or (actions[i, 0] > 0 and self.exact_inference('t1_net', 't1', evi1) == 'neg_t'))
+					   			or ((actions[i, 1] < 0 and self.exact_inference('t2_net', 't2', evi2) == 'pos_t') or (actions[i, 1] > 0 and self.exact_inference('t2_net', 't2', evi2) == 'neg_t'))) else 0.0
+			# t_diff[i] += 0.25 if (th.prod(actions[i]) < 0) else 0.0
 		return [t_diff]
 	
 	def forward(self, rollout_data):
@@ -112,7 +128,10 @@ class Swimmer(th.autograd.Function):
 
 if __name__ == "__main__":
 	net = Swimmer(debug=True)
-	net.check_pgm(net.torque_net)
-	net.marginalise(net.torque_net, ['theta', 'flag'], 't')
-	evi = {'theta': 'neg_ang', 'flag': 'no_torque'}
-	net.exact_inference('torque_net', 't', evi)
+	net.check_pgm(net.t1_net)
+	net.check_pgm(net.t2_net)
+	net.marginalise(net.t1_net, ['theta1'], 't1')
+	evi = {'theta1': 'pos_ang'}
+	net.exact_inference('t1_net', 't1', evi)
+	evi = {'theta2': 'pos_ang'}
+	net.exact_inference('t2_net', 't2', evi)
