@@ -2,7 +2,13 @@
 
 source $HOME/anaconda3/etc/profile.d/conda.sh
 
-cd $HOME/intuitiveRL/
+uname=$(hostname)
+if [[ $uname == *"cbric-gpu"* ]]; then
+    cd /local/a/joshi157/intuitiveRL/
+else
+    cd $HOME/intuitiveRL/
+fi
+
 conda activate intuitiveRL
 # python intuitiveTrain.py -a ppo --env LunarLander-v2 --continuous -bsz 4 -e 10 -lr 3e-4 1e-4 8e-5 -lrs 100000 500000 1000000 -cr 0.5 0.4 0.3 0.2 -crs 50000 100000 250000 500000 --totalSteps 500000 -ef 10000 --nCores 4
 # python intuitiveTrain.py -a ppo --env LunarLander-v2 --continuous -bsz 4 -e 10 -lr 2e-4 8e-5 3e-5 -lrs 50000 100000 500000 -cr 0.5 0.4 0.3 0.2 -crs 50000 100000 250000 500000 --beta 0.2 0.0 --beta-schedule 50000 500000 --totalSteps 500000 -ef 5000 -ssr 200.0 --nCores 4 --intuitiveEncouragement -icf 20 -ist 100

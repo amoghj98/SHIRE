@@ -94,6 +94,7 @@ dependencies:
       - requests==2.31.0
       - sb3-contrib==2.3.0
       - swig==4.2.1
+      - tensorboard==2.16.2
       - urllib3==2.2.1
       - zipp==3.19.2
 prefix: /home/amogh/anaconda3/envs/intuitiveRL
