@@ -49,31 +49,31 @@ if ! ( [ -f $HOME/.ssh/id_ed25519.pub ] || [ -f $HOME/.ssh/id_rsa.pub ] ) ; then
 fi
 
 # create env
-consoleOut "${yellow}Creating conda environment...${nc}"
-conda create -n spinningup python=3.6
-conda activate spinningup
-consoleOut "${green}Done creating env!${nc}"
+# consoleOut "${yellow}Creating conda environment...${nc}"
+# conda create -n spinningup python=3.6
+# conda activate spinningup
+# consoleOut "${green}Done creating env!${nc}"
 # install OpenMPI
 consoleOut "${yellow}Installing OpenMPI...${nc}"
 sudo apt-get update && sudo apt-get install libopenmpi-dev
 consoleOut "${green}Done installing OpenMPI!${nc}"
 
 # get spinningup and install dependencies
-consoleOut "${yellow}Getting spinningup...${nc}"
-git clone https://github.com/openai/spinningup.git
-cd spinningup
-consoleOut "${green}Done installing spinningup!${nc}"
-consoleOut "${yellow}Fetching dependencies...${nc}"
-# now the opencv fail in the next step does not occur!
-pip install -e .
-# opencv builds in the automated pip install step inevitably fails due to python3.6 being very old. To rememdy this, install opencv-python manually!
-pip install opencv-python==4.1.2.30
-consoleOut "${green}Done installing dependencies!${nc}"
+# consoleOut "${yellow}Getting spinningup...${nc}"
+# git clone https://github.com/openai/spinningup.git
+# cd spinningup
+# consoleOut "${green}Done installing spinningup!${nc}"
+# consoleOut "${yellow}Fetching dependencies...${nc}"
+# # now the opencv fail in the next step does not occur!
+# pip install -e .
+# # opencv builds in the automated pip install step inevitably fails due to python3.6 being very old. To rememdy this, install opencv-python manually!
+# pip install opencv-python==4.1.2.30
+# consoleOut "${green}Done installing dependencies!${nc}"
 
 # get stable-baselines3 with all the optional dependencies
 pip install stable-baselines3[extra]
 
 # perform standard install test
 consoleOut "${yellow}Performing install test. This may take a long time...${nc}"
-python -m spinup.run ppo --hid "[32,32]" --env LunarLander-v2 --exp_name installtest --gamma 0.999
+# python -m spinup.run ppo --hid "[32,32]" --env LunarLander-v2 --exp_name installtest --gamma 0.999
 consoleOut "${green}Install test finished!${nc}"
