@@ -91,6 +91,7 @@ def make_env(env_id: str, args, rank: int, seed: int = 0):
 			env.reset(seed=int(seed[rank]) + rank)
 		if args.mode == 'train':
 			_log_seeds(args, seed, rank)
+			_log_args(args)
 		return env
 	if args.set_seeds:
 		set_random_seed(int(args.seeds[rank]))
@@ -106,6 +107,11 @@ def _log_seeds(args, seed, rank):
 	console_out(f'Thread {rank} Seeds: {seed}')
 	console_out(f'Thread {rank} Reset seed: {int(seed[rank]) + rank}')
 	console_out(f'Thread {rank} Random seed: {int(seed[rank])}')
+
+def _log_args(args):
+	with open(os.path.join("./best_model", args.t, 'args.txt'), 'a') as arg_log_file:
+		for k in args.keys():
+			arg_log_file.write(f'Arg {k}: {args.k}')
 
 def _clear_dir(dir):
 	files = os.listdir(dir)
