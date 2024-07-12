@@ -110,8 +110,7 @@ def _log_seeds(args, seed, rank):
 
 def _log_args(args):
 	with open(os.path.join("./best_model", args.t, 'args.txt'), 'a') as arg_log_file:
-		for k in args.keys():
-			arg_log_file.write(f'Arg {k}: {args.k}')
+		arg_log_file.write('\n'.join(sys.argv[1:]))
 
 def _clear_dir(dir):
 	files = os.listdir(dir)
