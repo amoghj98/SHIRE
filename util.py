@@ -91,7 +91,8 @@ def make_env(env_id: str, args, rank: int, seed: int = 0):
 			env.reset(seed=int(seed[rank]) + rank)
 		if args.mode == 'train':
 			_log_seeds(args, seed, rank)
-			_log_args(args)
+			if rank == 0:
+				_log_args(args)
 		return env
 	if args.set_seeds:
 		set_random_seed(int(args.seeds[rank]))
