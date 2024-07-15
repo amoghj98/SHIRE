@@ -43,13 +43,6 @@ class msgColour(str, Enum):
 	WHITE = white
 	NO_COLOUR = nc
 
-start_ignore = '\001'
-end_ignore = '\002'
-
-def quiet_exit_exception(exc_type, exc_val, traceback):
-	pass
-
-
 colourCode = {msgCategory.FATAL: msgColour.RED, msgCategory.WARNING: msgColour.YELLOW, msgCategory.INFO: msgColour.GREEN, msgCategory.CUSTOM: msgColour.CYAN}
 
 
@@ -72,6 +65,42 @@ def compose_schedule(vals, tsteps):
 	for i in range(len(vals)):
 		sched.append((tsteps[i], vals[i]))
 	return sched
+
+def _log_seeds(args, seed, rank):
+	with open(os.path.join("./best_model", args.t, 'seeds.txt'), 'a') as seed_log_file:
+		seed_log_file.write(f'Thread {rank} Seeds: {seed}\n')
+		seed_log_file.write(f'Thread {rank} Reset seed: {int(seed[rank]) + rank}\n')
+		seed_log_file.write(f'Thread {rank} Random seed: {int(seed[rank])}\n')
+	console_out(f'Thread {rank} Seeds: {seed}')
+	console_out(f'Thread {rank} Reset seed: {int(seed[rank]) + rank}')
+	console_out(f'Thread {rank} Random seed: {int(seed[rank])}')
+
+def _log_args(args):
+	with open(os.path.join("./best_model", args.t, 'args.txt'), 'a') as arg_log_file:
+		arg_log_file.write('\n'.join(sys.argv[1:]))
+
+def _clear_dir(dir):
+	files = os.listdir(dir)
+	for file in files:
+		os.remove(os.path.join(dir, file))
+	os.rmdir(dir)
+
+def read_seeds(nCores, dir, path='./best_model'):
+	success = True
+	filename = os.path.join(path, dir, 'seeds.txt')
+	with open(filename) as seed_file:
+		seeds = [0] * nCores
+		for line in seed_file:
+			if 'Random seed' in line:
+				elems = line.split(' ')
+				n = int(elems[1])
+				try:
+					seeds[n] = int(elems[-1])
+				except IndexError:
+					success = False
+	if 0 in seeds:
+		success = False
+	return seeds, success
 
 def make_env(env_id: str, args, rank: int, seed: int = 0):
 	"""
@@ -99,25 +128,6 @@ def make_env(env_id: str, args, rank: int, seed: int = 0):
 	else:
 		set_random_seed(int(seed[rank]))
 	return _init
-
-def _log_seeds(args, seed, rank):
-	with open(os.path.join("./best_model", args.t, 'seeds.txt'), 'a') as seed_log_file:
-		seed_log_file.write(f'Thread {rank} Seeds: {seed}\n')
-		seed_log_file.write(f'Thread {rank} Reset seed: {int(seed[rank]) + rank}\n')
-		seed_log_file.write(f'Thread {rank} Random seed: {int(seed[rank])}\n')
-	console_out(f'Thread {rank} Seeds: {seed}')
-	console_out(f'Thread {rank} Reset seed: {int(seed[rank]) + rank}')
-	console_out(f'Thread {rank} Random seed: {int(seed[rank])}')
-
-def _log_args(args):
-	with open(os.path.join("./best_model", args.t, 'args.txt'), 'a') as arg_log_file:
-		arg_log_file.write('\n'.join(sys.argv[1:]))
-
-def _clear_dir(dir):
-	files = os.listdir(dir)
-	for file in files:
-		os.remove(os.path.join(dir, file))
-	os.rmdir(dir)
 
 def cleanup(env, args, killed=False, deleteLogs=False):
 	console_out(consoleMsg='Cleaning up...', terminalChar='\t', suppressMsgCategory=True)

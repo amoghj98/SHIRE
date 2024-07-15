@@ -46,6 +46,7 @@ def config():
 	parser.add_argument('--env', type=str, default='LunarLander-v2', help="Task Environment")
 	parser.add_argument('--nCores', type=int, default=4, help="Number of parallel training threads")
 	parser.add_argument('--set-seeds', action='store_true', default=False, help="Flag to force env initialisation with given seed values")
+	parser.add_argument('--seed-file-dir', type=str, default=None, help="Log file name in 'best_model' dir from where to load seeds")
 	parser.add_argument('--seeds', type=int, nargs='+', default=[0, 0, 0, 0], help="Environment initialisation seed values")
 	parser.add_argument('--theta-margin', type=float, default=0.4, help="Angle margin for Lunar Lander PGM")
 	parser.add_argument('--continuous', action='store_true', default=False, help="Flag to set if continuous action space is desired")
@@ -80,9 +81,15 @@ def config():
 	# parse all args
 	args = parser.parse_args()
 	# sanity checks
-	if args.set_seeds and (len(args.seeds) != args.nCores):
-		console_out(consoleMsg='Length of arg seeds does not match number of launched threads!', msgCat=msgCategory.FATAL)
-		sys.exit(-1)
+	if args.set_seeds:
+		if args.seed_file_dir is not None:
+			args.seeds, success = read_seeds(args.nCores, args.seed_file_dir)
+			if not success:
+				console_out(consoleMsg=f'Number of seeds in file seeds.txt in logdir "./best_model/{args.seed_file_dir}" does not match number of launched threads', msgCat=msgCategory.FATAL)
+				sys.exit(-1)
+		elif (len(args.seeds) != args.nCores):
+			console_out(consoleMsg='Length of arg seeds does not match number of launched threads!', msgCat=msgCategory.FATAL)
+			sys.exit(-1)
 	if len(args.learning_rate) != len(args.lr_schedule):
 		console_out(consoleMsg='Args learning-rate and lr-schedule have different lengths!', msgCat=msgCategory.FATAL)
 		sys.exit(-1)
