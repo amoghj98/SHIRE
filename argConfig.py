@@ -35,6 +35,7 @@ def config():
 	parser.add_argument('-tkl', '--target_kl', type=float, default=0.01, help="Target KL-Divergence Limit for policy updates")
 	# training loop args
 	parser.add_argument('--totalSteps', type=int, default=int(1e6), help="Total number of training interactions with env")
+	parser.add_argument('--checkpt-interval', type=int, default=500000, help="Number of steps between checkpoints")
 	# eval args
 	parser.add_argument('-m', '--mode', type=str, default='train', help="Script execution mode (train/test)")
 	parser.add_argument('--loadPath', type=str, default='./best_model/', help="Model load path")

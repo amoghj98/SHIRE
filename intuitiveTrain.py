@@ -20,7 +20,7 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 
 from argConfig import config
 from util import *
@@ -71,9 +71,19 @@ if __name__ == "__main__":
 	callbacks = []
 	#
 	terminatorCallback = stopTraining()
-	callbacks.append(terminatorCallback)
+	# callbacks.append(terminatorCallback)
 	#
 	solvedStateSaver = saveSolvedState(args.env, args.evalFreq, args.t, args.solved_state_reward)
+	callbacks.append(solvedStateSaver)
+	#
+	checkpoint_callback = CheckpointCallback(
+		save_freq=int(args.checkpt_interval/args.nCores),
+		save_path="./best_model/"+args.t,
+		name_prefix="rl_model",
+		save_replay_buffer=True,
+		save_vecnormalize=True,
+	)
+	callbacks.append(checkpoint_callback)
 	#
 	eval_callback = EvalCallback(
 		vec_env,
