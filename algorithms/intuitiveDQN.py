@@ -99,6 +99,7 @@ class intuitiveDQN(OffPolicyAlgorithm):
 		intuition_coef: Union[float, Schedule] = 0.5,
 		mean_reward_thresh = 100,
 		env_name = 'LunarLander-v2',
+		pgm_kwargs: Optional[Dict[str, Any]] = None,
 		use_intuition: bool = False,
 		tensorboard_log: Optional[str] = None,
 		policy_kwargs: Optional[Dict[str, Any]] = None,
@@ -143,10 +144,17 @@ class intuitiveDQN(OffPolicyAlgorithm):
 		# "epsilon" for the epsilon-greedy exploration
 		self.exploration_rate = 0.0
 		#
-		self.intuition_coef = intuition_coef
 		self.use_intuition = use_intuition
-		self.mean_reward_thresh = mean_reward_thresh
-		self.env_name = env_name
+		if self.use_intuition:
+			self.intuition_coef = intuition_coef
+			self.low_intuition_loss = False
+			self.env_name = env_name
+			self.rew_smoothing_factor = 0.5
+			self.mean_reward = None
+			self.mean_reward_thresh = mean_reward_thresh
+			# if 'CartPole' in self.env_name:
+			self.pgm_kwargs = pgm_kwargs
+			self.net = inets.__envs__[self.env_name](**self.pgm_kwargs)
 
 		if _init_setup_model:
 			self._setup_model()
@@ -198,7 +206,8 @@ class intuitiveDQN(OffPolicyAlgorithm):
 		# Update learning rate according to schedule
 		self._update_learning_rate(self.policy.optimizer)
 
-		intuition_coef = self.intuition_coef(self._current_progress_remaining)
+		if self.use_intuition:
+			intuition_coef = self.intuition_coef(self._current_progress_remaining)
 
 		losses = []
 		intuition_losses = []
@@ -226,9 +235,8 @@ class intuitiveDQN(OffPolicyAlgorithm):
 			loss = F.smooth_l1_loss(current_q_values, target_q_values)
 
 			if self.use_intuition:
-				net = inets.__envs__[self.env_name](**self.env_kwargs)
 				# intuitive_action_loss = net.compute_intuition_loss(rollout_data=replay_data, actions=replay_data.actions)
-				intuitive_action_loss = net.forward(rollout_data=replay_data)
+				intuitive_action_loss = self.net.forward(rollout_data=replay_data)
 				intuition_losses.append(intuitive_action_loss.item())
 				loss += intuition_coef * intuitive_action_loss
 

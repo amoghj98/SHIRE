@@ -115,7 +115,7 @@ def config():
 	if args.continuous and 'MountainCar' in args.env:
 		args.env = 'MountainCarContinuous-v0'
 	# check env support
-	supported_envs = ['LunarLander-v2', 'CartPole-v1', 'MountainCar-v0', 'Pendulum-v1', 'InvertedPendulum-v4', 'Acrobot-v1', 'Swimmer-v4', 'Ant-v4']
+	supported_envs = ['LunarLander-v2', 'CartPole-v1', 'MountainCar-v0', 'Pendulum-v1', 'InvertedPendulum-v4', 'Acrobot-v1', 'Swimmer-v4', 'Ant-v4', 'Taxi-v3']
 	args.env_kwargs = {}
 	if args.env not in supported_envs:
 		console_out(consoleMsg=f'Unsupported environment "{args.env}". Check arg "env" for typos, or add support', msgCat=msgCategory.FATAL)
