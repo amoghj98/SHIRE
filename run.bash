@@ -56,12 +56,12 @@ conda activate intuitiveRL
 # python intuitiveTrain.py -a td3 --env Pendulum-v1 -bsz 64 -e 10 -lr 1e-4 -lrs 50000000 -cr 0.5 0.4 0.3 0.2 -crs 500000 800000 1250000 5000000 --totalSteps 50000000 -ef 10000 --nCores 4
 # python intuitiveTrain.py -a ppo --env Pendulum-v1 -bsz 8 -e 10 -lr 1e-4 5e-5 1e-5 5e-6 -lrs 100000 180000 250000 1000000 -cr 0.5 0.4 0.3 0.2 -crs 50000 100000 250000 500000 --totalSteps 500000 -ef 5000 --nCores 4 --intuitiveEncouragement -icf 100 -ist -200.0
 # python intuitiveTrain.py -a ppo --env InvertedPendulum-v4 -bsz 4 -e 10 -lr 1e-4 -lrs 5000000 -cr 0.5 0.4 0.3 0.2 -crs 500000 800000 1250000 5000000 --totalSteps 1000000 -ef 5000 --nCores 4 --intuitiveEncouragement -icf 1 -ist 1000.0
-# python intuitiveTrain.py -a ppo --env Acrobot-v1 -bsz 4 -ns 2000 -e 80 -lr 3e-3 -lrs 1000000 -cr 0.2 -crs 500000 --lambd 0.97 --totalSteps 5000000 -ef 20000 --nCores 4
+# python intuitiveTrain.py -a ppo --env Acrobot-v1 -bsz 4 -n s 2000 -e 80 -lr 3e-3 -lrs 1000000 -cr 0.2 -crs 500000 --lambd 0.97 --totalSteps 5000000 -ef 20000 --nCores 4
 # python intuitiveTrain.py -a ppo --env Acrobot-v1 -bsz 8 -ns 1000 -e 10 -lr 3e-3 -lrs 1000000 -cr 0.2 -crs 500000 --lambd 0.97 --totalSteps 5000000 -ef 10000 --nCores 4
 # python intuitiveTrain.py -a ppo --env Acrobot-v1 -bsz 8 -ns 1000 -e 10 -lr 3e-3 -lrs 1000000 -cr 0.2 -crs 500000 --lambd 0.97 --totalSteps 5000000 -ef 10000 --nCores 4 --intuitiveEncouragement -icf 2
 # python intuitiveTrain.py -a ppo --env Swimmer-v4 -bsz 4 -e 10 -lr 5e-4 5e-5 1e-5 -lrs 100000 600000 1000000 -cr 0.3 -crs 1000000  --totalSteps 5000000 -ef 5000 --beta 0.01 0.0 --beta-schedule 600000 5000000 --nCores 4 -ssr 100.0 --intuitiveEncouragement -icf 0.5 -ist 150.0
 # CUDA_VISIBLE_DEVICES=$CARD python intuitiveTrain.py -a ppo --env Ant-v4 -bsz 8 -e 20 -ns 2048 -lr 1e-4 5e-5 1e-5 5e-6 1e-6 -lrs 50000 500000 2500000 10000000 40000000 -cr 0.3 -crs 10000000  --totalSteps 80000000 -ef 20000 --beta 0.005 0.0 --beta-schedule 500000 10000000 --lambd 0.98 --gamma 0.995 --nCores 8 -ssr 6000.0 --set-seeds --seed-file-dir 071524105033 --intuitiveEncouragement -icf 300 -ist 6000.0
-CUDA_VISIBLE_DEVICES=$CARD python intuitiveTrain.py -a dqn --env Taxi-v3 -bsz 8 -e 20 -ns 1024 -lr 1e-1 -lrs 4000000 -cr 0.3 -crs 4000000 --totalSteps 4000000 -ef 5000 --lambd 0.98 --gamma 0.5 --nCores 4 -ssr 8.0
+CUDA_VISIBLE_DEVICES=$CARD python intuitiveTrain.py -a ppo --env Taxi-v3 -bsz 8 -e 10 -ns 1024 -lr 1e-3 5e-4 3e-4 -lrs 500000 2000000 4000000 -cr 0.3 -crs 4000000 --totalSteps 4000000 -ef 5000 --beta 0.01 0.005 0.0 --beta-schedule 1000000 1500000 4000000 --lambd 0.98 --gamma 0.99 --nCores 4 -ssr 8.0 --set-seeds --seed-file-dir 080624151058
 #
 # python intuitiveTrain.py --env MountainCar-v0 --mode test -nep 2 --loadPath ./best_model/052424120338
 # python intuitiveTrain.py --env Swimmer-v4 --mode test -nep 2 --loadPath ./best_model/061724173618
