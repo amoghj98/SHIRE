@@ -6,6 +6,7 @@ import torch
 import time
 import os
 import readline
+import traceback
 
 # import gym
 import gymnasium as gym
@@ -118,6 +119,7 @@ if __name__ == "__main__":
 			vec_env.render(args.guiMode)
 	except KeyError:
 		console_out(consoleMsg=f'Unsupported optimisation algorithm "{args.algorithm}". Check arg "algorithm" for typos, or add support', msgCat=msgCategory.FATAL)
+		print(traceback.format_exc())
 		sys.exit(-1)
 	except KeyboardInterrupt:
 		killed = True
