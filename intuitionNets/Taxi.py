@@ -30,10 +30,10 @@ class Taxi(th.autograd.Function):
 							state_names={'h': ['l', 'n', 'r']})
 		v_cpd  =TabularCPD('v', 3, [[0.33], [0.34], [0.33]],
 							state_names={'v': ['u', 'n', 'd']})
-		a_cpd = TabularCPD('a', 6, [[0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.42, 0.04, 0.04, 0.80, 0.04, 0.04, 0.42, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04],
-									[0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.42, 0.04, 0.04, 0.80, 0.04, 0.04, 0.42, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04],
-									[0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.42, 0.04, 0.42, 0.80, 0.42, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04],
-									[0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.42, 0.80, 0.42, 0.04, 0.42, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04],
+		a_cpd = TabularCPD('a', 6, [[0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.41, 0.04, 0.04, 0.80, 0.04, 0.04, 0.41, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04],
+									[0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.41, 0.04, 0.04, 0.80, 0.04, 0.04, 0.41, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04],
+									[0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.41, 0.04, 0.43, 0.80, 0.43, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04],
+									[0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.43, 0.80, 0.43, 0.04, 0.43, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04],
 									[0.80, 0.80, 0.80, 0.80, 0.80, 0.80, 0.80, 0.80, 0.80, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04],
 									[0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.80, 0.80, 0.80, 0.80, 0.80, 0.80, 0.80, 0.80, 0.80]],
 							evidence=['action', 'h', 'v'], evidence_card=[3, 3, 3],
@@ -72,13 +72,17 @@ class Taxi(th.autograd.Function):
 	
 	def encode_abstract_states(self, rollout_data):
 		obs = rollout_data.observations.cpu()
-		dest = th.tensor([self.locations[int((obs % 4)[i].item())] for i in range(obs.shape[0])])
+		obs = obs % 4
+		dest = th.tensor([self.locations[int((obs)[i])] for i in range(obs.shape[0])])
 		obs = th.floor(obs / 4).int()
-		p_loc = th.tensor([self.locations[int((obs % 5)[i].item())] for i in range(obs.shape[0])])
+		obs = obs % 5
+		p_loc = th.tensor([self.locations[int((obs)[i])] for i in range(obs.shape[0])])
 		in_taxi = th.eq(p_loc, th.tensor([4, 4]))
 		in_taxi = th.logical_and(in_taxi[:, 0], in_taxi[:, 1])
 		obs = th.floor(obs / 5).int()
-		t_loc = th.cat((th.floor(obs / 5), th.tensor(obs % 5)), dim=1).int()
+		col = obs % 5
+		obs = obs /5
+		t_loc = th.cat((th.floor(obs), col.clone().detach()), dim=1).int()
 		for i in range(obs.shape[0]):
 			p_loc[i] = t_loc[i] if p_loc[i] == [4, 4] else p_loc[i]
 		hp = (p_loc - t_loc)[:, 0]
@@ -96,23 +100,20 @@ class Taxi(th.autograd.Function):
 	
 	def compute_intuition_diffs(self, rollout_data):
 		actions = rollout_data.actions
-		# l = [0, 1, 2, 5, 6, 7]
-		# for i in l:
-		# 	print(f'obs[{i}]: {rollout_data.observations[:, i]}')
 		[action_evi, h_evi, v_evi] = self.encode_abstract_states(rollout_data=rollout_data)
 		a_diff = th.zeros(rollout_data.observations.shape[0])
 		for i in range(rollout_data.observations.shape[0]):
 			evi = {'action': action_evi[i], 'h': h_evi[i], 'v': v_evi[i]}
 			a = self.exact_inference('a_net', 'a', evi)
 			a_diff[i] = 2.0 if ((a == 'pickup' and actions[i] != 4) or (a == 'drop' and actions[i] != 5)) else (1.0 if ((a == 'u' and actions[i] != 1) or (a == 'd' and actions[i] != 0) or (a == 'l' and actions[i] != 3) or (a == 'r' and actions[i] != 2)) else 0.0)
-		return [a_diff.cuda()]
+		return [a_diff]
 	
 	def forward(self, rollout_data):
 		[a_diff] = self.compute_intuition_diffs(rollout_data)
 		# convert to hinge loss
 		actions = rollout_data.actions
-		t_diff_max = th.maximum((1 - (a_diff * th.abs(actions))), th.zeros(rollout_data.observations.shape[0]).cuda())
-		intuition_loss = t_diff_max.sum().cpu()
+		t_diff_max = th.maximum((1 - (a_diff * th.abs(actions).cpu())), th.zeros(rollout_data.observations.shape[0]))
+		intuition_loss = t_diff_max.sum()
 		# self.save_for_backward(t_diff)
 		return intuition_loss
 

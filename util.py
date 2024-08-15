@@ -9,6 +9,9 @@ import glob
 from enum import Enum
 import readline
 
+import argparse
+from argparse import RawTextHelpFormatter
+
 import gymnasium as gym
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.monitor import Monitor
@@ -154,6 +157,22 @@ def console_out(consoleMsg='sample msg', msgCat=msgCategory.INFO, categoryStr=No
 	msg = f'{msgCol}{consoleMsg}{nc}'
 	print(f'{category}{msg}', end=terminalChar, flush=flushPrintBuffer)
 
+def manualCleanup(env: str, t: str) -> int:
+	console_out(consoleMsg='Cleaning up...', terminalChar='\t', suppressMsgCategory=True)
+	# clean everything in runs dir, its useless anyways
+	runDir = os.path.join("./runs")
+	dirs = os.listdir(runDir)
+	for dir in dirs:
+		_clear_dir(dir)
+	# clean model dir
+	modelDir = os.path.join("./best_model", t)
+	_clear_dir(modelDir)
+	# delete log dir
+	logDir = os.path.join("./tensorboard_PPO", env+"_"+t)
+	_clear_dir(logDir)
+	# done!
+	console_out(consoleMsg=f'[{green}DONE{nc}]', suppressMsgCategory=True)
+
 
 # custom callback class to save models that solve the environment
 class saveSolvedState(BaseCallback):
@@ -167,7 +186,7 @@ class saveSolvedState(BaseCallback):
 	def _on_step(self) -> bool:
 		assert self.parent is not None, ("`StopTrainingOnRewardThreshold` callback must be used with an `EvalCallback`")
 		#
-		if (self.solved_state_reward is not None) and (self.parent.last_mean_reward > self.solved_state_reward):
+		if (self.solved_state_reward is not None) and (self.parent.last_mean_reward > self.solved_state_reward) and (self.parent.num_timesteps % self.eval_freq == 0):
 			console_out(consoleMsg=f'New solution model with mean reward {self.parent.last_mean_reward}', msgCat=msgCategory.CUSTOM, categoryStr='update', categoryCol=msgColour.BLUE, msgCol=msgColour.CYAN)
 			self.model.save(os.path.join(self.model_save_path, self.envName+'_step_'+str(self.parent.num_timesteps)))
 		#
@@ -185,3 +204,26 @@ class stopTraining(BaseCallback):
 	
 	def external_stop(self):
 		self.continueTraining = False
+
+
+
+if __name__ == "__main__":
+	desc=("Utility script.")
+	epilog=("For further documentation, refer the IntuitiveRL framework documentation page at https://github.com/")
+	parser=argparse.ArgumentParser(description=desc, epilog=epilog, formatter_class=RawTextHelpFormatter)
+	# args
+	parser.add_argument('env', type=str, default=None, help="Task Environment of dir to be cleaned")
+	parser.add_argument('t', type=str, default=None, help="Timestamp string of dir to be cleaned")
+	# parse all args
+	args = parser.parse_args()
+	# sanity checks
+	if args.env is None or args.t is None:
+		console_out('All arguments are required!', msgCategory.FATAL)
+	#
+	console_out(consoleMsg=f'This action can not be undone'.upper()+f'{msgColour.YELLOW} Delete logs? (y/n)\t', msgCat=msgCategory.WARNING, msgCol=msgColour.RED, flushPrintBuffer=True)
+	c = input()
+	delLog = True if c.lower()=='y' else False
+	if delLog:
+		manualCleanup(env=args.env, t=args.t)
+	else:
+		console_out('Exiting...', suppressMsgCategory=True)
