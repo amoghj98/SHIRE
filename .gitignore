@@ -2,6 +2,6 @@ spinningup/
 tensorboard*/
 runs/
 best_model/
-maze_env/
+maze-env/
 *pycache*
 scratchpad.py
