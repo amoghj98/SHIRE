@@ -11,6 +11,7 @@ import traceback
 # import gym
 import gymnasium as gym
 # sys.modules["gym"] = gym
+import maze_env
 
 # from stable_baselines3 import PPO
 # from algorithms import *

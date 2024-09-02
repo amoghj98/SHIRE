@@ -13,6 +13,7 @@ import argparse
 from argparse import RawTextHelpFormatter
 
 import gymnasium as gym
+import maze_env
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import BaseCallback
@@ -114,8 +115,12 @@ def make_env(env_id: str, args, rank: int, seed: int = 0):
 	:param rank: index of the subprocess
 	"""
 	def _init():
+		if 'Maze' in env_id:
+			env_ID = 'maze_env/Maze-v0'
+		else:
+			env_ID = env_id
 		env = Monitor(
-			env = gym.make(env_id, **args.env_kwargs)
+			env = gym.make(env_ID, **args.env_kwargs)
 		)
 		if args.set_seeds:
 			env.reset(seed=int(args.seeds[rank]) + rank)

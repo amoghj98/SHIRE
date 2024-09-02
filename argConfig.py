@@ -3,6 +3,8 @@
 import sys
 import time
 
+import maze_env
+
 import argparse
 from argparse import RawTextHelpFormatter
 
@@ -79,6 +81,8 @@ def config():
 	parser.add_argument('-hzr', '--healthy-z-range', type=float, nargs='+', default=[0.2, 1], help="Healthy z co-ordinate range for ant torso")
 	parser.add_argument('-cfr', '--contact-f-range', type=float, nargs='+', default=[-1.0, 1.0], help="Contact force range for contact cost computation")
 	parser.add_argument('--include_current_positions_in_observation', action='store_true', default=False, help="Flag to omit torso x-y co-ordinates from observation")
+	#
+	parser.add_argument('--maze-size', type=int, default=5, help="Size of maze to simulate")
 	# parse all args
 	args = parser.parse_args()
 	# sanity checks
@@ -115,7 +119,7 @@ def config():
 	if args.continuous and 'MountainCar' in args.env:
 		args.env = 'MountainCarContinuous-v0'
 	# check env support
-	supported_envs = ['LunarLander-v2', 'CartPole-v1', 'MountainCar-v0', 'Pendulum-v1', 'InvertedPendulum-v4', 'Acrobot-v1', 'Swimmer-v4', 'Ant-v4', 'Taxi-v3']
+	supported_envs = ['LunarLander-v2', 'CartPole-v1', 'MountainCar-v0', 'Pendulum-v1', 'InvertedPendulum-v4', 'Acrobot-v1', 'Swimmer-v4', 'Ant-v4', 'Taxi-v3', 'Maze-v0']
 	args.env_kwargs = {}
 	if args.env not in supported_envs:
 		console_out(consoleMsg=f'Unsupported environment "{args.env}". Check arg "env" for typos, or add support', msgCat=msgCategory.FATAL)
@@ -124,12 +128,13 @@ def config():
 	argList = {'LunarLander-v2': ['continuous', 'gravity', 'enable_wind', 'wind_power', 'turbulence_power'],
 			   'Pendulum-v1': ['g'],
 			   'Swimmer-v4': ['forward_reward_weight', 'ctrl_cost_weight', 'reset_noise_scale', 'exclude_current_positions_from_observation'],
-			   'Ant-v4': ['ctrl_cost_weight', 'use_contact_forces', 'contact_cost_weight', 'healthy_reward', 'terminate_when_unhealthy', 'healthy_z_range', 'contact_force_range', 'reset_noise_scale', 'exclude_current_positions_from_observation']}
+			   'Ant-v4': ['ctrl_cost_weight', 'use_contact_forces', 'contact_cost_weight', 'healthy_reward', 'terminate_when_unhealthy', 'healthy_z_range', 'contact_force_range', 'reset_noise_scale', 'exclude_current_positions_from_observation'],
+			   'Maze-v0': ['size']}
 	if args.env in argList.keys():
 		argList[args.env].append("render_mode")
 	else:
 		argList[args.env] = ["render_mode"]
-	env_kwargs = {'render_mode': args.guiMode, 'continuous':args.continuous, 'gravity': args.gravity, 'g': -args.gravity, 'enable_wind': args.wind, 'wind_power': args.windPower, 'turbulence_power': args.turbulencePower, 'forward_reward_weight': args.fwd_rew_wt, 'ctrl_cost_weight': args.ctrl_cost_wt, 'reset_noise_scale': args.rst_noise_scale, 'exclude_current_positions_from_observation': args.exclude_curr_pos_obs, 'use_contact_forces': args.use_contact_f, 'contact_cost_weight':args.contact_cost_wt, 'healthy_reward': args.healthy_rew, 'terminate_when_unhealthy': not args.continue_if_unhealthy, 'healthy_z_range': tuple(args.healthy_z_range), 'contact_force_range': tuple(args.contact_f_range), 'reset_noise_scale': args.rst_noise_scale}
+	env_kwargs = {'render_mode': args.guiMode, 'continuous':args.continuous, 'gravity': args.gravity, 'g': -args.gravity, 'enable_wind': args.wind, 'wind_power': args.windPower, 'turbulence_power': args.turbulencePower, 'forward_reward_weight': args.fwd_rew_wt, 'ctrl_cost_weight': args.ctrl_cost_wt, 'reset_noise_scale': args.rst_noise_scale, 'exclude_current_positions_from_observation': args.exclude_curr_pos_obs, 'use_contact_forces': args.use_contact_f, 'contact_cost_weight':args.contact_cost_wt, 'healthy_reward': args.healthy_rew, 'terminate_when_unhealthy': not args.continue_if_unhealthy, 'healthy_z_range': tuple(args.healthy_z_range), 'contact_force_range': tuple(args.contact_f_range), 'reset_noise_scale': args.rst_noise_scale, 'size': args.maze_size}
 	for key in argList[args.env]:
 		args.env_kwargs[key] = env_kwargs[key]
 	#
