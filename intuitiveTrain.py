@@ -59,7 +59,7 @@ if __name__ == "__main__":
 	# construct rl algo kwargs dict
 	algo_kwargs = {'ppo': {'policy': "MlpPolicy", 'env':vec_env, 'learning_rate':parameter_scheduler(lrSched, total_tsteps=args.totalSteps), 'clip_range':parameter_scheduler(clipSched, total_tsteps=args.totalSteps), 'n_steps':args.n_steps, 'batch_size':args.batch_size, 'n_epochs':args.n_epochs, 'gamma': args.gamma, 'ent_coef': args.beta, 'ent_coef_sched': parameter_scheduler(entropySched, total_tsteps=args.totalSteps), 'gae_lambda':args.lambd, 'verbose':1, 'tensorboard_log':args.logPath, 'use_intuition':args.intuitiveEncouragement, 'intuition_coef':parameter_scheduler(intuitionSched, total_tsteps=args.totalSteps), 'mean_reward_thresh': args.intuition_stop_thresh, 'env_name':args.env, 'pgm_kwargs': args.pgm_kwargs},
 				'trpo': {'policy': "MlpPolicy", 'env':vec_env, 'learning_rate':parameter_scheduler(lrSched, total_tsteps=args.totalSteps), 'n_steps':args.n_steps, 'batch_size':args.batch_size, 'target_kl': args.target_kl, 'n_critic_updates':args.n_epochs, 'gamma': args.gamma, 'ent_coef': args.beta, 'gae_lambda':args.lambd, 'verbose':1, 'tensorboard_log':args.logPath, 'use_intuition':args.intuitiveEncouragement, 'intuition_coef':parameter_scheduler(intuitionSched, total_tsteps=args.totalSteps), 'mean_reward_thresh': args.intuition_stop_thresh, 'env_name':args.env, 'pgm_kwargs': args.pgm_kwargs},
-				'dqn': {'policy': "MlpPolicy", 'env':vec_env, 'learning_rate':parameter_scheduler(lrSched, total_tsteps=args.totalSteps), 'train_freq':args.n_steps, 'target_update_interval': args.n_steps, 'gradient_steps':args.n_epochs * args.nCores, 'batch_size':args.batch_size, 'tau': args.tau, 'verbose': 1, 'tensorboard_log':args.logPath, 'use_intuition':args.intuitiveEncouragement, 'intuition_coef':parameter_scheduler(intuitionSched, total_tsteps=args.totalSteps), 'mean_reward_thresh': args.intuition_stop_thresh, 'env_name':args.env, 'pgm_kwargs': args.pgm_kwargs},
+				'dqn': {'policy': "MlpPolicy", 'env':vec_env, 'learning_rate':parameter_scheduler(lrSched, total_tsteps=args.totalSteps), 'train_freq':args.n_steps, 'target_update_interval': args.n_steps, 'gradient_steps':args.n_epochs, 'batch_size':args.batch_size, 'tau': args.tau, 'verbose': 1, 'tensorboard_log':args.logPath, 'use_intuition':args.intuitiveEncouragement, 'intuition_coef':parameter_scheduler(intuitionSched, total_tsteps=args.totalSteps), 'mean_reward_thresh': args.intuition_stop_thresh, 'env_name':args.env, 'pgm_kwargs': args.pgm_kwargs},
 				'td3': {'policy': "MlpPolicy", 'env':vec_env, 'learning_rate':parameter_scheduler(lrSched, total_tsteps=args.totalSteps), 'train_freq':args.n_steps, 'gradient_steps':args.n_epochs * args.nCores, 'batch_size':args.batch_size, 'verbose': 1, 'tensorboard_log':args.logPath, 'use_intuition':args.intuitiveEncouragement, 'intuition_coef':parameter_scheduler(intuitionSched, total_tsteps=args.totalSteps), 'mean_reward_thresh': args.intuition_stop_thresh, 'env_name':args.env, 'pgm_kwargs': args.pgm_kwargs},
 				'sac': {'policy': "MlpPolicy", 'env':vec_env, 'learning_rate':parameter_scheduler(lrSched, total_tsteps=args.totalSteps), 'buffer_size': args.buffer_size, 'learning_starts': args.learning_starts, 'batch_size':args.batch_size, 'tau': args.tau, 'gamma': args.gamma, 'train_freq':args.n_steps, 'target_update_interval': args.n_steps, 'gradient_steps':args.n_steps, 'verbose': 1, 'target_entropy': 'auto', 'tensorboard_log':args.logPath, 'use_intuition':args.intuitiveEncouragement, 'intuition_coef':parameter_scheduler(intuitionSched, total_tsteps=args.totalSteps), 'mean_reward_thresh': args.intuition_stop_thresh, 'env_name':args.env, 'pgm_kwargs': args.pgm_kwargs}}
 	#
@@ -75,8 +75,8 @@ if __name__ == "__main__":
 	terminatorCallback = stopTraining()
 	# callbacks.append(terminatorCallback)
 	#
-	solvedStateSaver = saveSolvedState(args.env, args.evalFreq, args.t, args.solved_state_reward)
-	callbacks.append(solvedStateSaver)
+	# solvedStateSaver = saveSolvedState(args.env, args.evalFreq, args.t, args.solved_state_reward)
+	# callbacks.append(solvedStateSaver)
 	#
 	checkpoint_callback = CheckpointCallback(
 		save_freq=int(args.checkpt_interval/args.nCores),
@@ -90,7 +90,7 @@ if __name__ == "__main__":
 	eval_callback = EvalCallback(
 		vec_env,
 		callback_after_eval=None, #solvedStateSaver,
-		callback_on_new_best=solvedStateSaver,
+		callback_on_new_best=None, #solvedStateSaver,
 		n_eval_episodes=args.nEpisodes,
 		best_model_save_path="./best_model/"+args.t,
 		log_path=args.logPath,

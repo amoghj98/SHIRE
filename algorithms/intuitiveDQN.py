@@ -91,7 +91,7 @@ class intuitiveDQN(OffPolicyAlgorithm):
 		replay_buffer_kwargs: Optional[Dict[str, Any]] = None,
 		optimize_memory_usage: bool = False,
 		target_update_interval: int = 10000,
-		exploration_fraction: float = 0.1,
+		exploration_fraction: float = 0.4,
 		exploration_initial_eps: float = 1.0,
 		exploration_final_eps: float = 0.05,
 		max_grad_norm: float = 10,
@@ -235,7 +235,6 @@ class intuitiveDQN(OffPolicyAlgorithm):
 			loss = F.smooth_l1_loss(current_q_values, target_q_values)
 
 			if self.use_intuition:
-				# intuitive_action_loss = net.compute_intuition_loss(rollout_data=replay_data, actions=replay_data.actions)
 				intuitive_action_loss = self.net.forward(rollout_data=replay_data)
 				intuition_losses.append(intuitive_action_loss.item())
 				loss += intuition_coef * intuitive_action_loss
@@ -254,6 +253,8 @@ class intuitiveDQN(OffPolicyAlgorithm):
 
 		self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
 		self.logger.record("train/loss", np.mean(losses))
+		if self.use_intuition:
+			self.logger.record("train/intuition_loss", np.mean(intuition_losses))
 
 	def predict(
 		self,

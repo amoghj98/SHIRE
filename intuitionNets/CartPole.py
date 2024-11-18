@@ -72,7 +72,7 @@ class CartPole(th.autograd.Function):
 		[f_diff] = self.compute_intuition_diffs(rollout_data)
 		# convert to hinge loss
 		actions = rollout_data.actions
-		f_diff_max = th.maximum((1 - (f_diff * th.abs(actions.cpu()))), th.zeros(rollout_data.observations.shape[0]))
+		f_diff_max = th.maximum((1 + (f_diff * th.abs(actions.cpu()))), th.zeros(rollout_data.observations.shape[0]))
 		intuition_loss = f_diff_max.sum()
 		self.save_for_backward(f_diff)
 		return intuition_loss
