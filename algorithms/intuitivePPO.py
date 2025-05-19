@@ -26,10 +26,10 @@ from pgmpy.inference import BeliefPropagation
 from os.path import expanduser
 import sys
 
-sys.path.insert(1, expanduser("~")+'/intuitiveRL/intuitionNets')
+sys.path.insert(1, expanduser("~")+'/SHIRE/intuitionNets')
 import intuitionNets as inets
 
-sys.path.insert(1, expanduser("~")+'/intuitiveRL')
+sys.path.insert(1, expanduser("~")+'/SHIRE')
 from util import *
 
 warnings.simplefilter("error", RuntimeWarning)

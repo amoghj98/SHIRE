@@ -15,7 +15,7 @@ import intuitionNets as inets
 
 def config():
 	desc=("RL Training args configuration script.")
-	epilog=("For further documentation, refer the IntuitiveRL framework documentation page at https://github.com/")
+	epilog=("For further documentation, refer the SHIRE framework documentation page at https://github.com/")
 	parser=argparse.ArgumentParser(description=desc, epilog=epilog, formatter_class=RawTextHelpFormatter)
 	# policy training args
 	parser.add_argument('-a', '--algorithm', type=str, default='ppo', help="Policy optimisation algorithm")

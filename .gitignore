@@ -5,3 +5,5 @@ best_model/
 maze-env/
 *pycache*
 scratchpad.py
+.DS_Store
+algorithms/.DS_Store

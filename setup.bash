@@ -48,15 +48,19 @@ if ! ( [ -f $HOME/.ssh/id_ed25519.pub ] || [ -f $HOME/.ssh/id_rsa.pub ] ) ; then
     exit -1
 fi
 
+cd /local/a/joshi157/SHIRE/
+mkdir ./tensorboard_PPO
+mkdir ./best_model
+
 # create env
 # consoleOut "${yellow}Creating conda environment...${nc}"
 # conda create -n spinningup python=3.6
 # conda activate spinningup
 # consoleOut "${green}Done creating env!${nc}"
 # install OpenMPI
-consoleOut "${yellow}Installing OpenMPI...${nc}"
-sudo apt-get update && sudo apt-get install libopenmpi-dev
-consoleOut "${green}Done installing OpenMPI!${nc}"
+# consoleOut "${yellow}Installing OpenMPI...${nc}"
+# sudo apt-get update && sudo apt-get install libopenmpi-dev
+# consoleOut "${green}Done installing OpenMPI!${nc}"
 
 # get spinningup and install dependencies
 # consoleOut "${yellow}Getting spinningup...${nc}"
@@ -71,7 +75,7 @@ consoleOut "${green}Done installing OpenMPI!${nc}"
 # consoleOut "${green}Done installing dependencies!${nc}"
 
 # get stable-baselines3 with all the optional dependencies
-pip install stable-baselines3[extra]
+# pip install stable-baselines3[extra]
 
 # perform standard install test
 consoleOut "${yellow}Performing install test. This may take a long time...${nc}"
