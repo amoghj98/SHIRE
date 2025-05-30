@@ -1,6 +1,6 @@
 <h2>SHIRE: Enhancing Sample Efficiency using Human Intuition in Reinforcement Learning</h2>
 
-This repository contains code associated with SHIRE: Enhancing Sample Efficiency using Human Intuition in Reinforcement Learning. This code has most recently been tested with Python 3.10 and PyTorch 2.5.1
+This repository contains code associated with <a href="https://arxiv.org/abs/2409.09990">SHIRE: Enhancing Sample Efficiency using Human Intuition in Reinforcement Learning</a> This code has most recently been tested with Python 3.10 and PyTorch 2.5.1
 
 [//]: # (SHIRE is a Probabilistic Intuition-based Reinforcement Learning Framework.)
 
