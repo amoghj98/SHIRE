@@ -36,17 +36,31 @@ bash run.bash
 This script internally calls the script intuitiveTrain.py, which supports a large number of command-line arguments. These args are documented in the file "argConfig.py"
 
 <h3> Citations </h3>
-If you find this work useful in your research, pleas consider citing: <a href="https://arxiv.org/abs/2409.09990">Amogh Joshi, Adarsh Kosta and Kaushik Roy, "SHIRE: Enhancing Sample Efficiency using Human Intuition in Reinforcement Learning", arXiv preprint, 2024</a>
+If you find this work useful in your research, please consider citing:
+
+A. Joshi, A. Kosta and K. Roy, "SHIRE: Enhancing Sample Efficiency using Human Intuition in Reinforcement Learning", In Proceedings of the 2025 IEEE International Conference on Robotics and Automation (ICRA), Atlanta, USA, 2025
 
 ```
+@inproceedings{joshi2025shire,
+  author={Joshi, Amogh and Kosta, Adarsh and Roy, Kaushik},
+  booktitle={2025 IEEE International Conference on Robotics and Automation (ICRA)},
+  title={SHIRE: Enhancing Sample Efficiency using Human Intuition in REinforcement Learning},
+  pages={},
+  year={2025},
+  organization={IEEE}
+}
+```
+
+An arXiv version is also available: <a href="https://arxiv.org/abs/2409.09990">Amogh Joshi, Adarsh Kosta and Kaushik Roy, "SHIRE: Enhancing Sample Efficiency using Human Intuition in REinforcement Learning", arXiv preprint, 2024</a>
+```
 @misc{joshi2025shireenhancingsampleefficiency,
-      title={SHIRE: Enhancing Sample Efficiency using Human Intuition in REinforcement Learning}, 
-      author={Amogh Joshi and Adarsh Kumar Kosta and Kaushik Roy},
-      year={2025},
-      eprint={2409.09990},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2409.09990}, 
+    title={SHIRE: Enhancing Sample Efficiency using Human Intuition in REinforcement Learning}, 
+    author={Amogh Joshi and Adarsh Kumar Kosta and Kaushik Roy},
+    year={2025},
+    eprint={2409.09990},
+    archivePrefix={arXiv},
+    primaryClass={cs.LG},
+    url={https://arxiv.org/abs/2409.09990}, 
 }
 ```
 
