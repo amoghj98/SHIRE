@@ -41,14 +41,16 @@ If you find this work useful in your research, please consider citing:
 A. Joshi, A. Kosta and K. Roy, "SHIRE: Enhancing Sample Efficiency using Human Intuition in Reinforcement Learning", In Proceedings of the 2025 IEEE International Conference on Robotics and Automation (ICRA), Atlanta, USA, 2025
 
 ```
-@inproceedings{joshi2025shire,
+@INPROCEEDINGS{joshi2025shire,
   author={Joshi, Amogh and Kosta, Adarsh and Roy, Kaushik},
-  booktitle={2025 IEEE International Conference on Robotics and Automation (ICRA)},
-  title={SHIRE: Enhancing Sample Efficiency using Human Intuition in REinforcement Learning},
-  pages={},
+  booktitle={2025 IEEE International Conference on Robotics and Automation (ICRA)}, 
+  title={SHIRE: Enhancing Sample Efficiency using Human Intuition in REinforcement Learning}, 
   year={2025},
-  organization={IEEE}
-}
+  volume={},
+  number={},
+  pages={13399-13405},
+  keywords={Training;Simultaneous localization and mapping;Costs;Reinforcement learning;Pipelines;Probabilistic logic;Encoding;Robots},
+  doi={10.1109/ICRA55743.2025.11128459}}
 ```
 
 An arXiv version is also available: <a href="https://arxiv.org/abs/2409.09990">Amogh Joshi, Adarsh Kosta and Kaushik Roy, "SHIRE: Enhancing Sample Efficiency using Human Intuition in REinforcement Learning", arXiv preprint, 2024</a>
